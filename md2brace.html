@@ -11,8 +11,8 @@ textarea {
 <h1>Code Markdown to Structured Text Transpiler Workbench</h1>
 
 <p>markdown source:</p>
-<textarea id="src" rows="7" cols="90" placeholder="markdown" style="background-color:oldlace;">
-# a b 
+<textarea id="src" rows="5" cols="90" placeholder="markdown" style="background-color:oldlace;">
+# a b
 ## c d
 ## e f
 </textarea>
@@ -88,8 +88,8 @@ const grammar = ohm.grammar(String.raw`
   var openbrackets = 0;
 
   function reset () {
-      var depth = 0;
-      var openbrackets = 0;
+      depth = 0;
+      openbrackets = 0;
   }
 
   function emitbrackets (indentstring) {
