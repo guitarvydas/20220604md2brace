@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+textarea {
+}
+</style>
+</head>
+<body>
+
+<h1>Code Markdown to Structured Text Transpiler Workbench</h1>
+
+<p>markdown source:</p>
+<textarea id="src" rows="7" cols="90" placeholder="markdown" style="background-color:oldlace;">
+# a b 
+## c d
+## e f
+</textarea>
+
+<p>transpiled:</p>
+<textarea id="output" rows="7" cols="90" placeholder="transpiled"  readonly style="background-color:whitesmoke;">
+</textarea>
+<br>
+<br>
+<p id="status" > READY </p>
+
+<!-- Ohm-JS -->
+<script src="https://unpkg.com/ohm-js@16/dist/ohm.min.js"></script>
+
+
+<br>
+<button onclick="transpile ()">Transpile</button>
+<script>
+
+const grammar = ohm.grammar(String.raw`
+  ToBrace {
+    main = line+
+    line = indent? spc? toEOL+ linetail
+    linetail =   newline toIndent* -- withContent
+               | newline? end -- withoutContent
+    indent = indentChar+
+    indentChar = ("#" | "*")
+    toIndent = ~indentChar any
+    toEOL = ~newline any
+
+    newline = "\n"
+    spc = " "
+  }
+`);
+
+  const rewriteRules = {
+      main: function (line) {
+          reset ();
+          var walked_line = line.walk ().join ('');
+          return `${walked_line}${closebrackets ()}`;
+      },
+      line: function (indent, spc, toEOL, linetail) {
+          var walked_indent = indent.walk ().join ('');
+          var walked_spc = spc.walk ().join ('');
+          var walked_toEOL = toEOL.walk ().join ('');
+          var walked_linetail = linetail.walk ();
+          return `${emitbrackets (walked_indent)}${walked_toEOL}${walked_linetail}`;
+      },
+      linetail_withContent: function (newline, toIndent) {
+          var walked_newline = newline.walk ();
+          var walked_toIndent = toIndent.walk ().join ('');
+          return `${walked_newline}${walked_toIndent}`;
+      },
+      linetail_withoutContent: function (newline, end) {
+          var walked_newline = newline.walk ().join ('');
+          var walked_end = end.walk ();
+          return '\n';
+      },
+      indent: function (indentChar) { return `${indentChar.walk ().join ('')}`; },
+      indentChar: function (c) { return `${c.walk ()}`; },
+      toIndent: function (c) { return `${c.walk ()}`; },
+      toEOL: function (c) { return `${c.walk ()}`; },
+      newline: function (c) { return `${c.walk ()}`; },
+      spc: function (c) { return `${c.walk ()}`; },
+      // required by Ohm-JS...
+      _terminal: function () { return this.sourceString; },
+      _iter: function (...children) { return children.map(c => c.walk ()); }
+  };
+
+  // helper functions
+  
+  var depth = 0;
+  var openbrackets = 0;
+
+  function reset () {
+      var depth = 0;
+      var openbrackets = 0;
+  }
+
+  function emitbrackets (indentstring) {
+      var currdepth = indentstring.length;
+      var prevdepth = depth;
+      depth = currdepth;
+      if (prevdepth === currdepth) {
+          return "}\n{";
+      } else if (currdepth > prevdepth) {
+          var openp = openbrackets;
+          openbrackets = openp + 1;
+          return "{";
+      } else {
+          throw "workbench: internal error";
+      }
+  }
+  
+  function closebrackets () {
+      var openb = openbrackets;
+      var result = "";
+      while (openb > 0) {
+          result += "}";
+          openb -= 1;
+      }
+      return result;
+  }
+  
+  function transpile () {
+      let src = document.getElementById('src').value;
+      let matchResult = grammar.match (src);
+      if (matchResult.succeeded ()) {
+          document.getElementById('status').innerHTML = "OK";
+          let sem = grammar.createSemantics ();
+          sem.addOperation ('walk', rewriteRules);
+          let treeWalker = sem (matchResult);
+          let text = treeWalker.walk ();
+          document.getElementById('output').value = text;
+      } else {
+          document.getElementById('status').innerHTML = "parse FAILED";
+      }
+  }
+  </script>
+</body>
+</html>
+
